@@ -2,83 +2,35 @@ import axios from "axios";
 import { StudentInfo } from "../components/visualComponents/StudentList";
 import { stringToBool } from "../utils";
 import { useQuery } from "@tanstack/react-query";
+import { createStudentTab, updateStudentTab } from "./generateStudentTab";
 
 export function studentPageName(student: StudentInfo): string {
   return student.id.padStart(2, "0");
 }
 export function studentSpreadSheetName(student: StudentInfo): string {
-  return `${studentPageName(student)}_${student.firstname}_${student.name}`;
+  return `${student.firstname}_${student.name}`;
 }
 
-async function createStudentTab(
-  accessToken: string,
-  spreadsheetId: string,
-  templateId: number,
-  students: StudentInfo[]
-): Promise<void> {
-  await axios.post(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-    {
-      requests: students.map<any>((student) => {
-        return {
-          duplicateSheet: {
-            sourceSheetId: templateId,
-            newSheetName: studentPageName(student),
-          },
-        };
-      }),
-      includeSpreadsheetInResponse: false,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-}
-
-async function updateStudentTab(
-  accessToken: string,
-  spreadsheetId: string,
-  students: StudentInfo[]
-): Promise<void> {
-  await axios.post(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
-    {
-      valueInputOption: "USER_ENTERED",
-      includeValuesInResponse: false,
-      responseValueRenderOption: "FORMATTED_VALUE",
-      responseDateTimeRenderOption: "SERIAL_NUMBER",
-      data: students.map<any>((student) => {
-        return {
-          range: `${studentPageName(student)}!A2`,
-          values: [[`=Roster!E${student.row}`]],
-        };
-      }),
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-}
-
-type FileResponse = {
-  id: string;
+type Permission = {
+  role: string;
+  type: string;
+  emailAddress: string;
+  deleted: boolean;
+};
+type StudentPageInfo = {
   name: string;
+  id: string;
+  permissions: Permission[];
 };
 
 type FilesResponse = {
-  files: FileResponse[];
+  files: StudentPageInfo[];
 };
 async function getStudentPage(
   accessToken: string,
   student: StudentInfo,
   folderId: string
-): Promise<FileResponse[]> {
+): Promise<StudentPageInfo[]> {
   const resp = await axios.get<FilesResponse>(
     `https://www.googleapis.com/drive/v3/files`,
     {
@@ -89,7 +41,7 @@ async function getStudentPage(
         q: `(name = '${studentSpreadSheetName(
           student
         )}') and (parents = '${folderId}') and (trashed = false)`,
-        fields: "files(id, name)",
+        fields: "files(id, name, permissions)",
         spaces: "drive",
       },
     }
@@ -101,17 +53,61 @@ async function createStudentFile(
   accessToken: string,
   student: StudentInfo,
   folderId: string
-): Promise<void> {
-  if ((await getStudentPage(accessToken, student, folderId)).length > 0) {
+): Promise<StudentPageInfo> {
+  const studentPageInfoList: StudentPageInfo[] = await getStudentPage(
+    accessToken,
+    student,
+    folderId
+  );
+  if (studentPageInfoList.length > 0) {
     console.log(`Page already exists for student ${student}`);
-    return;
+    return studentPageInfoList[0];
   }
-  await axios.post(
+
+  console.log(`Creating page for student ${student}`);
+  const res = await axios.post<StudentPageInfo>(
     `https://www.googleapis.com/drive/v3/files`,
     {
       name: studentSpreadSheetName(student),
       mimeType: "application/vnd.google-apps.spreadsheet",
       parents: [folderId],
+      fields: "files(id, name, permissions)",
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      params: {
+        supportsAllDrives: true,
+      },
+    }
+  );
+  return res.data;
+}
+
+async function createStudentPermissions(
+  accessToken: string,
+  student: StudentInfo,
+  studentPageInfo: StudentPageInfo
+): Promise<void> {
+  const fileId: string = studentPageInfo.id;
+  const permission = studentPageInfo.permissions.filter(
+    (permission) =>
+      !permission.deleted && permission.emailAddress == student.email
+  );
+  if (permission.length > 0) {
+    console.log(`Page permissions already exists for student ${student}`);
+    return;
+  }
+  console.log(`Creating permissions for page ${fileId} for student ${student}`);
+
+  await axios.post(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+    {
+      type: "user",
+      role: "reader",
+      emailAddress: student.email,
     },
     {
       headers: {
@@ -124,6 +120,7 @@ async function createStudentFile(
     }
   );
 }
+
 type SheetProperties = {
   sheetId: number;
   title: string;
@@ -226,7 +223,12 @@ async function handleStudent(
   folderId: string,
   field: string
 ) {
-  await createStudentFile(accessToken, student, folderId);
+  const studentPageInfo = await createStudentFile(
+    accessToken,
+    student,
+    folderId
+  );
+  await createStudentPermissions(accessToken, student, studentPageInfo);
   await createLookUpSheet(
     accessToken,
     spreadsheetId,
@@ -263,10 +265,25 @@ export async function createStudentSheet(
   templateId: number,
   students: StudentInfo[],
   folderId: string,
-  field: string
+  field: string,
+  sheetList: SheetProperties[],
+  templateData: string[][],
+  rosterSheetName: string
 ): Promise<void> {
-  await createStudentTab(accessToken, spreadsheetId, templateId, students);
-  await updateStudentTab(accessToken, spreadsheetId, students);
+  await createStudentTab(
+    accessToken,
+    spreadsheetId,
+    templateId,
+    students,
+    sheetList
+  );
+  await updateStudentTab(
+    accessToken,
+    spreadsheetId,
+    students,
+    templateData,
+    rosterSheetName
+  );
   await createStudentsFile(
     accessToken,
     spreadsheetId,
@@ -287,18 +304,21 @@ export function listStudent(
   spreadsheetId: string | undefined,
   rosterId: string | undefined
 ): StudentInfo[] {
-  const range = `${rosterId}!A1:E45`;
+  const range = `${rosterId}`;
   const studentFromValue = ({ values }: SheetValues) =>
-    values.map((student: string[], index: number) => {
-      const studentObj = {
-        period: student[0],
-        name: student[1],
-        firstname: student[2],
-        id: student[3],
-        row: index + 1,
-      };
-      return studentObj;
-    });
+    values
+      .map((student: string[], index: number) => {
+        const studentObj = {
+          period: student[0],
+          name: student[1],
+          firstname: student[2],
+          id: student[3],
+          email: student[5],
+          row: index + 1,
+        };
+        return studentObj;
+      })
+      .filter((student) => !Number.isNaN(parseInt(student.id)));
   const resp = useQuery({
     enabled:
       stringToBool(accessToken) &&
