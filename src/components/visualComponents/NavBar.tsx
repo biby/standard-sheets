@@ -11,7 +11,7 @@ export function NavBar({ user, setUser }: NavBarProps) {
   return (
     <Flex align="center" mb={4}>
       <IconButton aria-label="Menu" mr={2} />
-      <Text fontSize="lg">My Website</Text>
+      <Text fontSize="lg">Standards Sheet Creator</Text>
       <Spacer />
       <LogButton user={user} setUser={setUser} />
     </Flex>
