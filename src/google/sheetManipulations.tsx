@@ -92,11 +92,11 @@ async function createStudentPermissions(
   studentPageInfo: StudentPageInfo
 ): Promise<void> {
   const fileId: string = studentPageInfo.id;
-  const permission = studentPageInfo.permissions.filter(
+  const permission = studentPageInfo.permissions?.filter(
     (permission) =>
       !permission.deleted && permission.emailAddress == student.email
   );
-  if (permission.length > 0) {
+  if (permission && permission.length > 0) {
     console.log(`Page permissions already exists for student ${student}`);
     return;
   }
