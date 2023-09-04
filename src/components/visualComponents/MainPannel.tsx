@@ -22,18 +22,16 @@ export function MainContent() {
   const sheets = listSheets(
     context?.access_token,
     file?.docs ? file.docs[0].id : undefined
-  );
+  ).map((sheetOption) => sheetOption.value);
 
   const students = listStudent(
     context?.access_token,
     file?.docs ? file.docs[0].id : undefined,
     rosterId?.title
   ).filter((student) => student.id);
-  const existingStudentPages = students
-    .filter((student) =>
-      sheets.map((sheet) => sheet.label).includes(studentPageName(student))
-    )
-    .map((student) => student.id);
+  const existingStudentPages = sheets.filter((sheet) =>
+    students.map((student) => studentPageName(student)).includes(sheet.title)
+  );
   console.log({ sheets, existingStudentPages });
 
   return (
@@ -54,9 +52,10 @@ export function MainContent() {
         students={students}
         existingStudentPages={existingStudentPages}
         spreadSheetId={file?.docs ? file.docs[0].id : undefined}
-        templateId={templateId?.sheetId}
+        templateSheet={templateId}
         folderId={folder?.docs ? folder.docs[0].id : undefined}
         field={field}
+        rosterSheet={rosterId}
       />
     </Flex>
   );

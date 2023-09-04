@@ -9,10 +9,16 @@ import {
   Td,
   Button,
   Flex,
+  Checkbox,
 } from "@chakra-ui/react";
-import { useContext, useState } from "react";
-import { createStudentSheet } from "../../google/sheetManipulations";
+import { useContext, useEffect, useState } from "react";
+import {
+  createStudentSheet,
+  studentPageName,
+} from "../../google/sheetManipulations";
 import { UserAccesToken } from "../../google/login";
+import { SheetProperties } from "./SheetSelect";
+import { templateData } from "../students/templateSheet";
 
 export type StudentInfo = {
   id: string;
@@ -20,16 +26,18 @@ export type StudentInfo = {
   firstname: string;
   row: number;
   period: string;
+  email: string;
 };
 
 type StudentListProps = {
   students: StudentInfo[];
-  existingStudentPages: string[];
+  existingStudentPages: SheetProperties[];
   accessToken?: string;
   spreadSheetId?: string;
-  templateId?: number;
+  templateSheet?: SheetProperties;
   folderId?: string;
   field?: string;
+  rosterSheet?: SheetProperties;
 };
 
 type StudentProps = {
@@ -64,7 +72,17 @@ export function Student({
       <Td key="firstname">{student.firstname}</Td>
       <Td key="name">{student.name}</Td>
       <Td key="period">{student.period}</Td>
+      <Td key="Email">{student.email}</Td>
     </Tr>
+  );
+}
+
+function allSelected(
+  selectedStudents: StudentInfo[],
+  students: StudentInfo[]
+): boolean {
+  return students.every((student) =>
+    selectedStudents.map((st) => st.id).includes(student.id)
   );
 }
 
@@ -72,46 +90,125 @@ export function StudentList({
   students,
   existingStudentPages,
   spreadSheetId,
-  templateId,
+  templateSheet,
   folderId,
   field,
+  rosterSheet,
 }: StudentListProps) {
   const [selectedStudents, useSelectedStudents] = useState<StudentInfo[]>([]);
+  const [isChecked, useIsChecked] = useState<boolean>(true);
+  const selectAll = () => {
+    useSelectedStudents(
+      students.filter(
+        (student) =>
+          !existingStudentPages
+            .map((page) => page.title)
+            .includes(studentPageName(student))
+      )
+    );
+  };
+  const unselectAll = () => {
+    useSelectedStudents([]);
+  };
+  useEffect(selectAll, [students]);
+  useEffect(() => {
+    useSelectedStudents((selectedStudents) =>
+      selectedStudents.filter(
+        (student) =>
+          !existingStudentPages
+            .map((page) => page.title)
+            .includes(studentPageName(student))
+      )
+    );
+  }, [existingStudentPages]);
   const context = useContext(UserAccesToken);
+  const templateDataValue = templateData(
+    context?.access_token,
+    spreadSheetId,
+    templateSheet?.title
+  );
+
+  useEffect(() => {
+    if (
+      allSelected(
+        selectedStudents,
+        students.filter(
+          (student) =>
+            !existingStudentPages
+              .map((page) => page.title)
+              .includes(studentPageName(student))
+        )
+      )
+    ) {
+      console.log("select");
+      useIsChecked(true);
+    } else {
+      console.log("unselect");
+      useIsChecked(false);
+    }
+  }, [selectedStudents]);
+
   const createSheets = () => {
-    console.log(templateId, spreadSheetId);
-    templateId != undefined &&
+    console.log(templateSheet, spreadSheetId);
+    templateSheet != undefined &&
       context != undefined &&
       folderId != undefined &&
       field != undefined &&
-      spreadSheetId &&
+      spreadSheetId != undefined &&
+      rosterSheet != undefined &&
+      rosterSheet != undefined &&
+      templateDataValue != undefined &&
       createStudentSheet(
         context?.access_token,
         spreadSheetId,
-        templateId,
+        templateSheet.sheetId,
         selectedStudents,
         folderId,
-        field
+        field,
+        existingStudentPages,
+        templateDataValue.values,
+        rosterSheet.title
       );
   };
-  console.log({ selectedStudents, existingStudentPages });
-  console.log({ context, spreadSheetId, templateId, folderId, field });
+
+  // console.log({ selectedStudents, existingStudentPages });
+  // console.log({ context, spreadSheetId, templateSheet, folderId, field });
+  const selectCheckChange = ({}) => {
+    console.log("click");
+    if (isChecked) {
+      unselectAll();
+      useIsChecked(false);
+    } else {
+      selectAll();
+      useIsChecked(true);
+    }
+  };
   return (
     <Flex flexDirection="column">
-      <Button
-        isDisabled={
-          context == undefined ||
-          spreadSheetId == undefined ||
-          templateId == undefined ||
-          folderId == undefined ||
-          field == undefined
-        }
-        onClick={() => {
-          createSheets();
-        }}
-      >
-        Create Pages
-      </Button>
+      <Flex flexDirection="row">
+        <Button
+          isDisabled={
+            context == undefined ||
+            spreadSheetId == undefined ||
+            templateSheet == undefined ||
+            folderId == undefined ||
+            field == undefined
+          }
+          onClick={() => {
+            createSheets();
+          }}
+        >
+          Create Pages
+        </Button>
+        <Checkbox
+          isChecked={isChecked}
+          onChange={(e) => {
+            selectCheckChange(e);
+          }}
+        >
+          Select all
+        </Checkbox>
+      </Flex>
       <TableContainer>
         <Table>
           <TableCaption>List of students</TableCaption>
@@ -121,6 +218,7 @@ export function StudentList({
               <Th key="firstname"> Firstname</Th>
               <Th key="name">Name</Th>
               <Th key="period">Period</Th>
+              <Th key="email">Email</Th>
             </Tr>
           </Thead>
           <Tbody>

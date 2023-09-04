@@ -14,9 +14,9 @@ type LogButtonProps = {
   setUser: React.Dispatch<React.SetStateAction<TokenResponse | undefined>>;
 };
 
-function useUserInfo(accessToken: string | undefined) {
+function useUserInfo(accessToken?: string) {
   const profile = useQuery({
-    enabled: accessToken != null && accessToken != undefined,
+    enabled: accessToken != undefined,
     queryFn: () =>
       axios.get(`https://www.googleapis.com/oauth2/v1/userinfo`, {
         headers: {
