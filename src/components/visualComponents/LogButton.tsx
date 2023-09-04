@@ -11,7 +11,7 @@ import axios from "axios";
 
 type LogButtonProps = {
   user?: TokenResponse;
-  setUser: React.Dispatch<React.SetStateAction<TokenResponse | undefined>>;
+  setUser: (tokenResponse?: TokenResponse) => void;
 };
 
 function useUserInfo(accessToken?: string) {
@@ -46,8 +46,8 @@ export function LogButton({ user, setUser }: LogButtonProps) {
   };
   const userInfo = useUserInfo(user?.access_token);
   console.log(user);
-  return user ? (
-    <Button onClick={logOut}>{userInfo?.email} Log out</Button>
+  return userInfo?.email ? (
+    <Button onClick={logOut}>{userInfo.email} Log out</Button>
   ) : (
     <Button onClick={() => login()}>Log In</Button>
   );

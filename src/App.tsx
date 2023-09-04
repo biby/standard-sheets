@@ -6,7 +6,22 @@ import { NavBar } from "./components/visualComponents/NavBar";
 import { MainContent } from "./components/visualComponents/MainPannel";
 
 function App() {
-  const [user, setUser] = useState<TokenResponse | undefined>(undefined);
+  const getUser = (): TokenResponse | undefined => {
+    const user = localStorage.getItem("userTokenResponse");
+    if (user == null) {
+      return undefined;
+    }
+    return JSON.parse(user);
+  };
+  const [user, _setUser] = useState<TokenResponse | undefined>(getUser());
+  const setUser = (tokenResponse?: TokenResponse) => {
+    if (tokenResponse) {
+      localStorage.setItem("userTokenResponse", JSON.stringify(tokenResponse));
+    } else {
+      localStorage.removeItem("userTokenResponse");
+    }
+    return _setUser(tokenResponse);
+  };
   return (
     <UserAccesToken.Provider value={user}>
       <Box p={4}>

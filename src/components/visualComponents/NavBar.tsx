@@ -4,7 +4,7 @@ import { LogButton } from "./LogButton";
 
 type NavBarProps = {
   user?: TokenResponse;
-  setUser: React.Dispatch<React.SetStateAction<TokenResponse | undefined>>;
+  setUser: (tokenResponse?: TokenResponse) => void;
 };
 
 export function NavBar({ user, setUser }: NavBarProps) {
