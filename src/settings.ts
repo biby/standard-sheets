@@ -5,7 +5,7 @@ export function getWebToken(): string {
     enabled: true,
     queryFn: async ():Promise<string> =>
         {
-          const res = await fetch('./webToken.json')
+          const res = await fetch('webToken.json')
           return (await res.json()).web.client_id
         },
     queryKey: ["getWebToken"],
