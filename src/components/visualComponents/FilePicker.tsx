@@ -1,6 +1,6 @@
 import useDrivePicker from "react-google-drive-picker";
 import { PickerCallback } from "react-google-drive-picker/dist/typeDefs";
-import { clientId, developerKey } from "../../settings.ts";
+import { getWebToken, developerKey } from "../../settings.ts";
 import { Button, Tooltip } from "@chakra-ui/react";
 import { useContext } from "react";
 import { UserAccesToken } from "../../google/login.tsx";
@@ -19,8 +19,9 @@ export function FilePicker({
 }: FilePickerProps) {
   const [openPicker] = useDrivePicker();
   const context = useContext(UserAccesToken);
+  const clientId = getWebToken();
   // const customViewsArray = [new google.picker.DocsView()]; // custom view
-  const handleOpenPicker = () => {
+  const handleOpenPicker = async () => {
     openPicker({
       clientId: clientId,
       developerKey: developerKey,
