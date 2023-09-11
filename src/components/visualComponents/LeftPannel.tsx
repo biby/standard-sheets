@@ -1,7 +1,9 @@
-import { Input, Flex, Text } from "@chakra-ui/react";
+import { Button, Input, Flex, Text, Divider } from "@chakra-ui/react";
 import { FilePicker } from "./FilePicker";
 import { PickerCallback } from "react-google-drive-picker/dist/typeDefs";
 import { SheetSelect, SheetProperties } from "./SheetSelect";
+import { useState } from "react";
+import { SheetRefreshButton } from "./SheetRefreshButton";
 
 type LeftPannelProps = {
   file?: PickerCallback;
@@ -29,7 +31,9 @@ export function LeftPannel({
   setRosterId,
   setField,
 }: LeftPannelProps) {
-  console.log({ file, folder });
+  const [refreshSheetId, setRefreshSheetId] = useState<
+    SheetProperties | undefined
+  >();
   return (
     <Flex flexDirection="column" w="400px" p={4} bg="gray.200" mr={4}>
       <Text> Choose speadheet:</Text>
@@ -69,6 +73,17 @@ export function LeftPannel({
         bg="white"
         placeholder="Chemistry"
         onChange={(event) => setField(event.target.value)}
+      />
+      <Divider orientation="horizontal" />
+      <Text> Page Refresher:</Text>
+      <SheetSelect
+        spreadsheetId={file?.docs ? file.docs[0]?.id : undefined}
+        sheetType=""
+        onChange={(option) => setRefreshSheetId(option?.value)}
+      />
+      <SheetRefreshButton
+        spreadSheetId={file?.docs ? file.docs[0]?.id : undefined}
+        sheetId={refreshSheetId}
       />
     </Flex>
   );

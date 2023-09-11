@@ -9,8 +9,18 @@ function generateStudentTabData(
   student: StudentInfo,
   rosterSheetName: string
 ): string[][] {
-  let dataCopy = templateData.map((col) => [...col]);
-  dataCopy[1][0] = `=${rosterSheetName}!E${student.row}`;
+  const regExp = new RegExp(`=${rosterSheetName}!(?<row>[a-zA-Z]+)\\d+`, "g");
+  let dataCopy = templateData.map((col) => [
+    ...col.map((cell) => {
+      if (typeof cell === "string") {
+        return cell?.replace(
+          regExp,
+          `=${rosterSheetName}!$<row>${student.row}`
+        );
+      }
+      return cell;
+    }),
+  ]);
   return dataCopy;
 }
 
@@ -56,6 +66,7 @@ export async function createStudentTab(
               duplicateSheet: {
                 sourceSheetId: templateId,
                 newSheetName: studentPageName(student),
+                insertSheetIndex: student.row + 2,
               },
             };
           }),

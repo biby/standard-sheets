@@ -18,7 +18,7 @@ import {
 } from "../../google/sheetManipulations";
 import { UserAccesToken } from "../../google/login";
 import { SheetProperties } from "./SheetSelect";
-import { templateData } from "../students/templateSheet";
+import { sheetData } from "../students/templateSheet";
 
 export type StudentInfo = {
   id: string;
@@ -122,7 +122,7 @@ export function StudentList({
     );
   }, [existingStudentPages]);
   const context = useContext(UserAccesToken);
-  const templateDataValue = templateData(
+  const templateDataValue = sheetData(
     context?.access_token,
     spreadSheetId,
     templateSheet?.title

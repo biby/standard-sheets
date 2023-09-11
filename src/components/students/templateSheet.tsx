@@ -6,26 +6,29 @@ export type SpreadSheetValues = {
   values: string[][];
 };
 
-export function templateData(
+export function sheetData(
   accessToken?: string,
   spreadsheetId?: string,
-  templateSheetName?: string
+  sheetName?: string
 ): SpreadSheetValues | undefined {
   const resp = useQuery({
     enabled:
-      templateSheetName != undefined &&
+      sheetName != undefined &&
       accessToken != undefined &&
       spreadsheetId != undefined,
     queryFn: () =>
       axios.get<SpreadSheetValues>(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${templateSheetName}`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
+          params: {
+            valueRenderOption: "FORMULA",
+          },
         }
       ),
-    queryKey: ["templateData", spreadsheetId, templateSheetName],
+    queryKey: ["templateData", spreadsheetId, sheetName],
   });
   return resp.data?.data;
 }
