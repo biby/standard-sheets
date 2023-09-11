@@ -53,8 +53,7 @@ export function SheetRefreshButton({
   console.log({ context });
   console.log("refreshSheet");
   const data = sheetData(context?.access_token, spreadSheetId, sheetId?.title);
-  if (data == undefined) return;
-  const values = data.values;
+  const values = data?.values;
   console.log({ values });
 
   return (
@@ -62,7 +61,8 @@ export function SheetRefreshButton({
       isDisabled={
         context == undefined ||
         spreadSheetId == undefined ||
-        sheetId == undefined
+        sheetId == undefined ||
+        values == undefined
       }
       mb={2}
       onClick={() =>

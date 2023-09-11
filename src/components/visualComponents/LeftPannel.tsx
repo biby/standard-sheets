@@ -1,4 +1,4 @@
-import { Button, Input, Flex, Text, Divider } from "@chakra-ui/react";
+import { Divider, Input, Flex, Text } from "@chakra-ui/react";
 import { FilePicker } from "./FilePicker";
 import { PickerCallback } from "react-google-drive-picker/dist/typeDefs";
 import { SheetSelect, SheetProperties } from "./SheetSelect";
@@ -74,7 +74,7 @@ export function LeftPannel({
         placeholder="Chemistry"
         onChange={(event) => setField(event.target.value)}
       />
-      <Divider orientation="horizontal" />
+      <Divider colorScheme="grey.400" mt="30px" mb="30px" />
       <Text> Page Refresher:</Text>
       <SheetSelect
         spreadsheetId={file?.docs ? file.docs[0]?.id : undefined}
