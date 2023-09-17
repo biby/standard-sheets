@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import axiosInstance from "../../axiosInstance";
 
 export type SpreadSheetValues = {
   range: string;
@@ -17,7 +17,7 @@ export function sheetData(
       accessToken != undefined &&
       spreadsheetId != undefined,
     queryFn: () =>
-      axios.get<SpreadSheetValues>(
+      axiosInstance.get<SpreadSheetValues>(
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}`,
         {
           headers: {

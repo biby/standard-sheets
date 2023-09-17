@@ -19,3 +19,4 @@ export const SCOPES = [
     "https://www.googleapis.com/auth/drive",
   ];
   
+export const maxSelectedSudents = 18

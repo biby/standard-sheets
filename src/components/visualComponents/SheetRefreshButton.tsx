@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from "../../axiosInstance.tsx";
 import { sheetData } from "../students/templateSheet";
 import { SheetProperties } from "../visualComponents/SheetSelect";
 import { useContext } from "react";
@@ -16,7 +16,7 @@ async function refreshSheet(
     data.length,
     Math.max(...data.map((row) => row.length))
   )}`;
-  await axios.post(
+  await axiosInstance.post(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
     {
       valueInputOption: "USER_ENTERED",

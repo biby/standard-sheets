@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from "../axiosInstance";
 import { StudentInfo } from "../components/visualComponents/StudentList";
 import { studentPageName } from "./sheetManipulations";
 import { R1C1toA1 } from "../utils";
@@ -33,7 +33,7 @@ export async function createStudentTab(
   recreate: boolean = false
 ): Promise<void> {
   console.log({ recreate, sheetList, students });
-  await axios.post(
+  await axiosInstance.post(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
     {
       requests: [
@@ -93,7 +93,7 @@ export async function updateStudentTab(
     templateData.length,
     Math.max(...templateData.map((row) => row.length))
   )}`;
-  await axios.post(
+  await axiosInstance.post(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
     {
       valueInputOption: "USER_ENTERED",

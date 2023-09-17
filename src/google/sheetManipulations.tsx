@@ -1,8 +1,9 @@
-import axios from "axios";
+import axiosInstance from "../axiosInstance";
 import { StudentInfo } from "../components/visualComponents/StudentList";
 import { stringToBool } from "../utils";
 import { useQuery } from "@tanstack/react-query";
 import { createStudentTab, updateStudentTab } from "./generateStudentTab";
+import { R1C1toA1 } from "../utils";
 
 export function studentPageName(student: StudentInfo): string {
   return student.id.padStart(2, "0");
@@ -31,7 +32,7 @@ async function getStudentPage(
   student: StudentInfo,
   folderId: string
 ): Promise<StudentPageInfo[]> {
-  const resp = await axios.get<FilesResponse>(
+  const resp = await axiosInstance.get<FilesResponse>(
     `https://www.googleapis.com/drive/v3/files`,
     {
       headers: {
@@ -65,7 +66,7 @@ async function createStudentFile(
   }
 
   console.log(`Creating page for student ${student}`);
-  const res = await axios.post<StudentPageInfo>(
+  const res = await axiosInstance.post<StudentPageInfo>(
     `https://www.googleapis.com/drive/v3/files`,
     {
       name: studentSpreadSheetName(student),
@@ -102,7 +103,7 @@ async function createStudentPermissions(
   }
   console.log(`Creating permissions for page ${fileId} for student ${student}`);
 
-  await axios.post(
+  await axiosInstance.post(
     `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
     {
       type: "user",
@@ -124,6 +125,16 @@ async function createStudentPermissions(
 type SheetProperties = {
   sheetId: number;
   title: string;
+  gridProperties: {
+    rowCount: number;
+    columnCount: number;
+  };
+};
+
+type SpreadSheet = {
+  sheets: {
+    properties: SheetProperties;
+  }[];
 };
 async function createLookUpSheet(
   accessToken: string,
@@ -136,33 +147,59 @@ async function createLookUpSheet(
   const studentPages = await getStudentPage(accessToken, student, folderId);
   if (studentPages.length != 1) {
     throw Error(
-      `Student ${student} has an un expected number of pages: ${studentPages.length}`
+      `Student ${student} has an unexpected number of pages: ${studentPages.length}`
     );
   }
-  const newSheet = await axios.post<SheetProperties>(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/sheets/${templateId}:copyTo`,
+  const sheet = await axiosInstance.get<SpreadSheet>(
+    `https://sheets.googleapis.com/v4/spreadsheets/${studentPages[0].id}`,
     {
-      destinationSpreadsheetId: studentPages[0].id,
-    },
-    {
+      params: {
+        includeGridData: false,
+      },
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
     }
   );
-
+  let sheetProperties;
+  const fieldSheet = sheet.data.sheets
+    .filter((sheet) => sheet.properties.title == field)
+    .map((sheet) => sheet.properties);
+  if (fieldSheet.length > 0) {
+    console.log("Refreshing  already existing field tabfor student", {
+      fieldSheet,
+    });
+    sheetProperties = fieldSheet[0];
+  } else {
+    console.log({
+      data: sheet.data,
+    });
+    const newSheet = await axiosInstance.post<SheetProperties>(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/sheets/${templateId}:copyTo`,
+      {
+        destinationSpreadsheetId: studentPages[0].id,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    sheetProperties = newSheet.data;
+  }
   const student_formula = `=IMPORTRANGE("https://docs.google.com/spreadsheets/d/${spreadsheetId}";"${studentPageName(
     student
   )}!A:Z")`;
 
-  await axios.post(
+  await axiosInstance.post(
     `https://sheets.googleapis.com/v4/spreadsheets/${studentPages[0].id}:batchUpdate`,
     {
       requests: [
         {
           updateSheetProperties: {
-            properties: { sheetId: newSheet.data.sheetId, title: field },
+            properties: { sheetId: sheetProperties.sheetId, title: field },
             fields: "title",
           },
         },
@@ -175,20 +212,19 @@ async function createLookUpSheet(
       },
     }
   );
-  await axios.post(
-    `https://sheets.googleapis.com/v4/spreadsheets/${studentPages[0].id}/values/${field}:clear`,
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
 
-  await axios.put(
-    `https://sheets.googleapis.com/v4/spreadsheets/${studentPages[0].id}/values/${field}!A1:A1`,
-    { values: [[student_formula]] },
+  const rowCount = sheetProperties.gridProperties.rowCount;
+  const columnCount = sheetProperties.gridProperties.columnCount;
+
+  await axiosInstance.put(
+    `https://sheets.googleapis.com/v4/spreadsheets/${
+      studentPages[0].id
+    }/values/${field}!A1:${R1C1toA1(rowCount, columnCount)}`,
+    {
+      values: [
+        [student_formula].concat(Array(columnCount - 1).fill("")),
+      ].concat(Array(rowCount - 1).fill(Array(columnCount).fill(""))),
+    },
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -200,7 +236,7 @@ async function createLookUpSheet(
     }
   );
 
-  await axios.post(
+  await axiosInstance.post(
     `https://docs.google.com/spreadsheets/d/${studentPages[0].id}/externaldata/addimportrangepermissions`,
     {},
     {
@@ -228,7 +264,9 @@ async function handleStudent(
     student,
     folderId
   );
+
   await createStudentPermissions(accessToken, student, studentPageInfo);
+
   await createLookUpSheet(
     accessToken,
     spreadsheetId,
@@ -325,7 +363,7 @@ export function listStudent(
       stringToBool(spreadsheetId) &&
       stringToBool(rosterId),
     queryFn: () =>
-      axios
+      axiosInstance
         .get<SheetValues>(
           `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`,
           {

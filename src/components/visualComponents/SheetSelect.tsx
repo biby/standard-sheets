@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from "../../axiosInstance";
 import Select, { SingleValue } from "react-select";
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
@@ -30,7 +30,7 @@ export function listSheets(
   const resp = useQuery({
     enabled: stringToBool(accessToken) && stringToBool(spreadsheetId),
     queryFn: () =>
-      axios.get<SheetsResponse>(
+      axiosInstance.get<SheetsResponse>(
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
         {
           headers: {

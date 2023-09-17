@@ -10,6 +10,7 @@ import {
   Button,
   Flex,
   Checkbox,
+  Spacer,
 } from "@chakra-ui/react";
 import { useContext, useEffect, useState } from "react";
 import {
@@ -19,7 +20,7 @@ import {
 import { UserAccesToken } from "../../google/login";
 import { SheetProperties } from "./SheetSelect";
 import { sheetData } from "../students/templateSheet";
-
+import { maxSelectedSudents } from "../../settings";
 export type StudentInfo = {
   id: string;
   name: string;
@@ -57,6 +58,8 @@ export function Student({
         return selectedStudents
           .slice(0, index)
           .concat(selectedStudents.slice(index + 1));
+      } else if (selectedStudents.length >= maxSelectedSudents) {
+        return selectedStudents;
       } else {
         return [...selectedStudents, student];
       }
@@ -81,8 +84,11 @@ function allSelected(
   selectedStudents: StudentInfo[],
   students: StudentInfo[]
 ): boolean {
-  return students.every((student) =>
-    selectedStudents.map((st) => st.id).includes(student.id)
+  return (
+    selectedStudents.length >= maxSelectedSudents ||
+    students.every((student) =>
+      selectedStudents.map((st) => st.id).includes(student.id)
+    )
   );
 }
 
@@ -99,28 +105,32 @@ export function StudentList({
   const [isChecked, useIsChecked] = useState<boolean>(true);
   const selectAll = () => {
     useSelectedStudents(
-      students.filter(
-        (student) =>
-          !existingStudentPages
-            .map((page) => page.title)
-            .includes(studentPageName(student))
-      )
+      students
+        .filter(
+          (student) =>
+            !existingStudentPages
+              .map((page) => page.title)
+              .includes(studentPageName(student))
+        )
+        .splice(0, maxSelectedSudents)
     );
   };
   const unselectAll = () => {
     useSelectedStudents([]);
   };
-  useEffect(selectAll, [students]);
-  useEffect(() => {
-    useSelectedStudents((selectedStudents) =>
-      selectedStudents.filter(
-        (student) =>
-          !existingStudentPages
-            .map((page) => page.title)
-            .includes(studentPageName(student))
-      )
-    );
-  }, [existingStudentPages]);
+  // useEffect(selectAll, [students]);
+  // useEffect(() => {
+  //   useSelectedStudents((selectedStudents) =>
+  //     selectedStudents
+  //       .filter(
+  //         (student) =>
+  //           !existingStudentPages
+  //             .map((page) => page.title)
+  //             .includes(studentPageName(student))
+  //       )
+  //       .splice(0, maxSelectedSudents)
+  //   );
+  // }, [existingStudentPages]);
   const context = useContext(UserAccesToken);
   const templateDataValue = sheetData(
     context?.access_token,
@@ -200,13 +210,14 @@ export function StudentList({
         >
           Create Pages
         </Button>
+        <Spacer />
         <Checkbox
           isChecked={isChecked}
           onChange={(e) => {
             selectCheckChange(e);
           }}
         >
-          Select all
+          Select all (up to {maxSelectedSudents})
         </Checkbox>
       </Flex>
       <TableContainer>
